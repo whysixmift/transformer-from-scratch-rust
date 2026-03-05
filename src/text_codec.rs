@@ -10,12 +10,12 @@ struct MergeRule {
 }
 
 #[derive(Clone, Debug)]
-pub struct BpeTokenizer {
+pub struct TokenCodec {
     id_to_piece: Vec<Vec<u8>>,
     merges: Vec<MergeRule>,
 }
 
-impl BpeTokenizer {
+impl TokenCodec {
     pub fn train(text: &str, num_merges: usize) -> Self {
         let mut id_to_piece: Vec<Vec<u8>> = (0u8..=255u8).map(|b| vec![b]).collect();
         let mut ids: Vec<u32> = text.as_bytes().iter().map(|&b| b as u32).collect();
@@ -124,7 +124,7 @@ impl BpeTokenizer {
         if &magic != b"BPE1" {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "invalid tokenizer magic",
+                "invalid text_codec magic",
             ));
         }
 
@@ -154,7 +154,7 @@ impl BpeTokenizer {
     }
 }
 
-pub fn build_language_model_dataset(
+pub fn make_lm_windows(
     tokens: &[usize],
     block_size: usize,
     stride: usize,

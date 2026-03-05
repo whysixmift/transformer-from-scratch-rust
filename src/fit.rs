@@ -1,4 +1,4 @@
-use crate::model::{SimpleRng, Tensor, Transformer, softmax};
+use crate::engine::{SimpleRng, Tensor, LanguageEngine, softmax};
 
 #[derive(Clone, Debug)]
 struct AdamW {
@@ -50,7 +50,7 @@ impl AdamW {
 }
 
 #[derive(Clone, Debug)]
-pub struct TrainingConfig {
+pub struct FitConfig {
     pub steps: usize,
     pub batch_size: usize,
     pub grad_accum_steps: usize,
@@ -61,7 +61,7 @@ pub struct TrainingConfig {
     pub max_grad_norm: f32,
 }
 
-pub fn cosine_lr(step: usize, cfg: &TrainingConfig) -> f32 {
+pub fn cosine_lr(step: usize, cfg: &FitConfig) -> f32 {
     let min_lr = cfg.lr * cfg.min_lr_ratio;
     if cfg.warmup_steps > 0 && step < cfg.warmup_steps {
         return cfg.lr * (step as f32 + 1.0) / cfg.warmup_steps as f32;
@@ -143,27 +143,27 @@ fn grad_linear_from_hidden(hidden: &Tensor, d_logits: &Tensor) -> (Vec<f32>, Vec
     (grad_w, grad_b)
 }
 
-pub fn train_lm_head_only(
-    model: &mut Transformer,
+pub fn fit_head_only(
+    engine: &mut LanguageEngine,
     dataset: &[(Vec<usize>, Vec<usize>)],
-    cfg: &TrainingConfig,
+    cfg: &FitConfig,
     seed: u64,
 ) {
-    let mut opt_w = AdamW::new(model.lm_head.weight.data.len(), cfg.lr, cfg.weight_decay);
-    let mut opt_b = AdamW::new(model.lm_head.bias.data.len(), cfg.lr, cfg.weight_decay);
+    let mut opt_w = AdamW::new(engine.lm_head.weight.data.len(), cfg.lr, cfg.weight_decay);
+    let mut opt_b = AdamW::new(engine.lm_head.bias.data.len(), cfg.lr, cfg.weight_decay);
     let mut rng = SimpleRng::new(seed);
 
     let micro_batches = (cfg.batch_size * cfg.grad_accum_steps).max(1);
     for step in 0..cfg.steps {
-        let mut acc_w = vec![0.0f32; model.lm_head.weight.data.len()];
-        let mut acc_b = vec![0.0f32; model.lm_head.bias.data.len()];
+        let mut acc_w = vec![0.0f32; engine.lm_head.weight.data.len()];
+        let mut acc_b = vec![0.0f32; engine.lm_head.bias.data.len()];
         let mut loss_sum = 0.0f32;
 
         for _ in 0..micro_batches {
             let idx = rng.gen_usize(dataset.len());
             let (x, y) = &dataset[idx];
-            let hidden = model.forward_hidden(x);
-            let logits = model.lm_head.forward_2d(&hidden);
+            let hidden = engine.forward_hidden(x);
+            let logits = engine.lm_head.forward_2d(&hidden);
             let (loss, d_logits) = cross_entropy_with_grad(&logits, y);
             let (grad_w, grad_b) = grad_linear_from_hidden(&hidden, &d_logits);
 
@@ -189,8 +189,8 @@ pub fn train_lm_head_only(
         let lr_now = cosine_lr(step, cfg);
         opt_w.set_lr(lr_now);
         opt_b.set_lr(lr_now);
-        opt_w.update(&mut model.lm_head.weight.data, &acc_w);
-        opt_b.update(&mut model.lm_head.bias.data, &acc_b);
+        opt_w.update(&mut engine.lm_head.weight.data, &acc_w);
+        opt_b.update(&mut engine.lm_head.bias.data, &acc_b);
 
         if step % (cfg.steps / 10).max(1) == 0 || step + 1 == cfg.steps {
             println!(

@@ -1,11 +1,11 @@
-# Transformer From Scratch (Rust)
+# Rust Language Engine Lab
 
-A compact, modular decoder-only Transformer implementation in Rust, built from scratch for learning and experimentation.
+A compact, modular decoder-only language engine in Rust, built for learning and experimentation.
 
 ## Highlights
 
-- Byte-level BPE tokenizer with train/save/load support
-- Decoder-only Transformer with:
+- Byte-level BPE token codec with train/save/load support
+- Decoder-only language engine with:
   - RMSNorm
   - RoPE positional encoding
   - SwiGLU MLP
@@ -19,15 +19,15 @@ A compact, modular decoder-only Transformer implementation in Rust, built from s
   - Greedy decoding
   - Sampling with temperature, top-k, top-p, repetition penalty
   - Beam search with length penalty and optional EOS handling
-- Binary checkpointing for model and tokenizer
+- Binary checkpointing for the engine and token codec
 
 ## Project Structure
 
-- `src/model.rs` - Tensor utilities, layers, Transformer model, checkpoint IO
-- `src/tokenizer.rs` - BPE tokenizer and LM dataset builder
-- `src/training.rs` - Optimizer, loss/grad helpers, training loop
-- `src/sampling.rs` - Sampling and beam-search decoding
-- `src/presets.rs` - Model size presets
+- `src/engine.rs` - Tensor utilities, layers, language engine, checkpoint IO
+- `src/text_codec.rs` - BPE token codec and LM dataset builder
+- `src/fit.rs` - Optimizer, loss/grad helpers, training loop
+- `src/infer.rs` - Sampling and beam-search decoding
+- `src/profiles.rs` - Model size profiles
 - `src/lib.rs` - Library exports + tests
 - `src/main.rs` - End-to-end demo: train, save, load, generate
 
@@ -39,10 +39,10 @@ cargo run
 
 This will:
 
-1. Train a tokenizer on a small in-file corpus
-2. Build a model from preset config
+1. Train a token codec on a small in-file corpus
+2. Build an engine from a profile config
 3. Train LM head parameters
-4. Save `model.bin` and `tokenizer.bin`
+4. Save `engine.bin` and `text_codec.bin`
 5. Reload artifacts and generate text
 
 ## Tests

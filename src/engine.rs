@@ -455,7 +455,7 @@ impl DecoderBlock {
 }
 
 #[derive(Clone, Debug)]
-pub struct TransformerConfig {
+pub struct EngineConfig {
     pub vocab_size: usize,
     pub max_seq_len: usize,
     pub d_model: usize,
@@ -467,16 +467,16 @@ pub struct TransformerConfig {
 }
 
 #[derive(Clone, Debug)]
-pub struct Transformer {
-    pub config: TransformerConfig,
+pub struct LanguageEngine {
+    pub config: EngineConfig,
     token_embedding: Tensor,
     blocks: Vec<DecoderBlock>,
     norm_f: RmsNorm,
     pub lm_head: Linear,
 }
 
-impl Transformer {
-    pub fn new(config: TransformerConfig, seed: u64) -> Self {
+impl LanguageEngine {
+    pub fn new(config: EngineConfig, seed: u64) -> Self {
         let mut rng = SimpleRng::new(seed);
         let token_embedding = xavier_init(
             &mut rng,
@@ -580,7 +580,7 @@ impl Transformer {
         if !is_v1 && !is_v2 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "invalid model magic",
+                "invalid engine magic",
             ));
         }
 
@@ -594,7 +594,7 @@ impl Transformer {
             num_heads
         };
 
-        let config = TransformerConfig {
+        let config = EngineConfig {
             vocab_size,
             max_seq_len,
             d_model,

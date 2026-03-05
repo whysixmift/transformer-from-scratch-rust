@@ -1,8 +1,8 @@
-use crate::model::{SimpleRng, Transformer, argmax, softmax};
-use crate::tokenizer::BpeTokenizer;
+use crate::engine::{SimpleRng, LanguageEngine, argmax, softmax};
+use crate::text_codec::TokenCodec;
 
 #[derive(Clone, Debug)]
-pub struct GenerateConfig {
+pub struct DecodePlan {
     pub max_new_tokens: usize,
     pub temperature: f32,
     pub top_k: usize,
@@ -89,10 +89,10 @@ fn apply_top_p(probs: &mut [f32], top_p: f32) -> bool {
     true
 }
 
-pub fn select_next_token(
+pub fn pick_next(
     logits: &[f32],
     generated_ids: &[usize],
-    cfg: &GenerateConfig,
+    cfg: &DecodePlan,
     rng: &mut SimpleRng,
 ) -> usize {
     if cfg.temperature <= 0.0 {
@@ -137,7 +137,7 @@ fn normalized_beam_score(score: f32, length: usize, prompt_len: usize, length_pe
     }
 }
 
-fn beam_search_ids(model: &Transformer, prompt_ids: &[usize], cfg: &GenerateConfig) -> Vec<usize> {
+fn beam_search_ids(engine: &LanguageEngine, prompt_ids: &[usize], cfg: &DecodePlan) -> Vec<usize> {
     let mut beams = vec![Beam {
         ids: prompt_ids.to_vec(),
         score: 0.0,
@@ -154,9 +154,9 @@ fn beam_search_ids(model: &Transformer, prompt_ids: &[usize], cfg: &GenerateConf
                 all_candidates.push(beam.clone());
                 continue;
             }
-            let start = beam.ids.len().saturating_sub(model.config.max_seq_len);
+            let start = beam.ids.len().saturating_sub(engine.config.max_seq_len);
             let context = &beam.ids[start..];
-            let logits = model.forward_logits(context);
+            let logits = engine.forward_logits(context);
             let seq = logits.shape[0];
             let vocab = logits.shape[1];
             let row_start = (seq - 1) * vocab;
@@ -213,39 +213,39 @@ fn beam_search_ids(model: &Transformer, prompt_ids: &[usize], cfg: &GenerateConf
         .unwrap_or_else(|| prompt_ids.to_vec())
 }
 
-pub fn generate_text(
-    model: &Transformer,
-    tokenizer: &BpeTokenizer,
+pub fn continue_text(
+    engine: &LanguageEngine,
+    text_codec: &TokenCodec,
     prompt: &str,
-    cfg: &GenerateConfig,
+    cfg: &DecodePlan,
     seed: u64,
 ) -> String {
-    let mut ids = tokenizer.encode(prompt);
+    let mut ids = text_codec.encode(prompt);
     if ids.is_empty() {
         ids.push(0);
     }
 
     if cfg.beam_width > 1 {
-        let out = beam_search_ids(model, &ids, cfg);
-        return tokenizer.decode(&out);
+        let out = beam_search_ids(engine, &ids, cfg);
+        return text_codec.decode(&out);
     }
 
     let mut rng = SimpleRng::new(seed);
     for _ in 0..cfg.max_new_tokens {
-        let start = ids.len().saturating_sub(model.config.max_seq_len);
+        let start = ids.len().saturating_sub(engine.config.max_seq_len);
         let context = &ids[start..];
-        let logits = model.forward_logits(context);
+        let logits = engine.forward_logits(context);
 
         let seq = logits.shape[0];
         let vocab = logits.shape[1];
         let row_start = (seq - 1) * vocab;
         let row_end = row_start + vocab;
-        let next_id = select_next_token(&logits.data[row_start..row_end], &ids, cfg, &mut rng);
+        let next_id = pick_next(&logits.data[row_start..row_end], &ids, cfg, &mut rng);
         ids.push(next_id);
         if cfg.eos_token_id == Some(next_id) {
             break;
         }
     }
 
-    tokenizer.decode(&ids)
+    text_codec.decode(&ids)
 }

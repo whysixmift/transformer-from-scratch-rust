@@ -1,17 +1,17 @@
-use crate::TransformerConfig;
+use crate::EngineConfig;
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug)]
-pub enum ModelPreset {
+pub enum ModelProfile {
     Tiny,
     Balanced,
     Wide,
 }
 
-impl ModelPreset {
-    pub fn build(self, vocab_size: usize, max_seq_len: usize) -> TransformerConfig {
+impl ModelProfile {
+    pub fn build(self, vocab_size: usize, max_seq_len: usize) -> EngineConfig {
         match self {
-            Self::Tiny => TransformerConfig {
+            Self::Tiny => EngineConfig {
                 vocab_size,
                 max_seq_len,
                 d_model: 64,
@@ -21,7 +21,7 @@ impl ModelPreset {
                 d_ff: 176,
                 rope_theta: 10_000.0,
             },
-            Self::Balanced => TransformerConfig {
+            Self::Balanced => EngineConfig {
                 vocab_size,
                 max_seq_len,
                 d_model: 96,
@@ -31,7 +31,7 @@ impl ModelPreset {
                 d_ff: 288,
                 rope_theta: 10_000.0,
             },
-            Self::Wide => TransformerConfig {
+            Self::Wide => EngineConfig {
                 vocab_size,
                 max_seq_len,
                 d_model: 128,

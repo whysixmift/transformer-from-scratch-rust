@@ -1,14 +1,14 @@
-pub mod model;
-pub mod presets;
-pub mod sampling;
-pub mod tokenizer;
-pub mod training;
+pub mod engine;
+pub mod profiles;
+pub mod infer;
+pub mod text_codec;
+pub mod fit;
 
-pub use model::{SimpleRng, Tensor, Transformer, TransformerConfig};
-pub use presets::ModelPreset;
-pub use sampling::{GenerateConfig, generate_text, select_next_token};
-pub use tokenizer::{BpeTokenizer, build_language_model_dataset};
-pub use training::{TrainingConfig, cosine_lr, cross_entropy_with_grad, train_lm_head_only};
+pub use engine::{SimpleRng, Tensor, LanguageEngine, EngineConfig};
+pub use profiles::ModelProfile;
+pub use infer::{DecodePlan, continue_text, pick_next};
+pub use text_codec::{TokenCodec, make_lm_windows};
+pub use fit::{FitConfig, cosine_lr, cross_entropy_with_grad, fit_head_only};
 
 #[cfg(test)]
 mod tests {
@@ -17,7 +17,7 @@ mod tests {
     #[test]
     fn tokenizer_roundtrip() {
         let text = "hello transformers";
-        let tok = BpeTokenizer::train(text, 50);
+        let tok = TokenCodec::train(text, 50);
         let ids = tok.encode(text);
         let decoded = tok.decode(&ids);
         assert_eq!(decoded, text);
@@ -33,7 +33,7 @@ mod tests {
 
     #[test]
     fn model_save_load_keeps_logits() {
-        let cfg = TransformerConfig {
+        let cfg = EngineConfig {
             vocab_size: 32,
             max_seq_len: 8,
             d_model: 16,
@@ -43,12 +43,12 @@ mod tests {
             d_ff: 48,
             rope_theta: 10_000.0,
         };
-        let model = Transformer::new(cfg, 7);
+        let engine = LanguageEngine::new(cfg, 7);
         let input = vec![1usize, 3, 5, 7];
-        let logits_a = model.forward_logits(&input);
+        let logits_a = engine.forward_logits(&input);
 
-        model.save("test_model.bin").unwrap();
-        let loaded = Transformer::load("test_model.bin").unwrap();
+        engine.save("test_model.bin").unwrap();
+        let loaded = LanguageEngine::load("test_model.bin").unwrap();
         let logits_b = loaded.forward_logits(&input);
 
         assert_eq!(logits_a.shape, logits_b.shape);
@@ -61,9 +61,9 @@ mod tests {
 
     #[test]
     fn tokenizer_save_load_roundtrip() {
-        let tok = BpeTokenizer::train("abc abc abc", 20);
+        let tok = TokenCodec::train("abc abc abc", 20);
         tok.save("test_tok.bin").unwrap();
-        let loaded = BpeTokenizer::load("test_tok.bin").unwrap();
+        let loaded = TokenCodec::load("test_tok.bin").unwrap();
 
         let text = "abc abc";
         assert_eq!(
@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn cosine_lr_bounds() {
-        let cfg = TrainingConfig {
+        let cfg = FitConfig {
             steps: 100,
             batch_size: 1,
             grad_accum_steps: 1,
@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn deterministic_greedy_selection() {
         let logits = vec![0.1, 2.5, 1.2, 0.8];
-        let cfg = GenerateConfig {
+        let cfg = DecodePlan {
             max_new_tokens: 1,
             temperature: 0.0,
             top_k: 0,
@@ -109,15 +109,15 @@ mod tests {
             eos_token_id: None,
         };
         let mut rng = SimpleRng::new(1);
-        let next = select_next_token(&logits, &[], &cfg, &mut rng);
+        let next = pick_next(&logits, &[], &cfg, &mut rng);
         assert_eq!(next, 1);
     }
 
     #[test]
     fn beam_search_generation_runs() {
-        let corpus = "rust rust rust model text";
-        let tok = BpeTokenizer::train(corpus, 20);
-        let cfg_model = TransformerConfig {
+        let corpus = "rust rust rust engine text";
+        let tok = TokenCodec::train(corpus, 20);
+        let cfg_model = EngineConfig {
             vocab_size: tok.vocab_size(),
             max_seq_len: 8,
             d_model: 32,
@@ -127,8 +127,8 @@ mod tests {
             d_ff: 64,
             rope_theta: 10_000.0,
         };
-        let model = Transformer::new(cfg_model, 11);
-        let gen_cfg = GenerateConfig {
+        let engine = LanguageEngine::new(cfg_model, 11);
+        let gen_cfg = DecodePlan {
             max_new_tokens: 4,
             temperature: 0.9,
             top_k: 0,
@@ -139,7 +139,7 @@ mod tests {
             length_penalty: 0.8,
             eos_token_id: None,
         };
-        let text = generate_text(&model, &tok, "rust", &gen_cfg, 1);
+        let text = continue_text(&engine, &tok, "rust", &gen_cfg, 1);
         assert!(!text.is_empty());
     }
 }
