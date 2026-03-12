@@ -1,57 +1,43 @@
-# Rust Language Engine Lab
+# Transformer From Scratch Written in Rust.
 
-A compact, modular decoder-only language engine in Rust, built for learning and experimentation.
+So, now im working on a project thats kinda complex, im making a "decoder-only" language model project written in Rust for learning, experimenting, and also understanding on HOW does modern text generation systems such as Large Language Model especially Transformer work at a lower level.
 
-## Highlights
+As if this project are for learning and experimenting, it focuses on clarity and structure implementating rather than a production scale optimization. What ive been implemented was includes a byte-level tokenizer, a decoder only transformer engine, training utilities, checkpoint saving and loading, and a text generation features. 
 
-- Byte-level BPE token codec with train/save/load support
-- Decoder-only language engine with:
-  - RMSNorm
-  - RoPE positional encoding
-  - SwiGLU MLP
-  - Grouped-Query Attention (GQA)
-- Training utilities:
-  - Cross-entropy loss + gradient for LM head
-  - AdamW optimizer
-  - Cosine LR schedule with warmup
-  - Gradient clipping
-- Text generation:
-  - Greedy decoding
-  - Sampling with temperature, top-k, top-p, repetition penalty
-  - Beam search with length penalty and optional EOS handling
-- Binary checkpointing for the engine and token codec
+## What This Project Includes
+
+ - A byte-level BPE Tokenizer with training, saving, and loading features support.
+ - A decoder-only transformer language engine
+ - RMSNorm
+ - RoPE Positional Encoding
+ - SwiGLU FFL (Feed Forward Layers)
+ - Grouped-Query Attention Layer
+ - Training utilities such as.. cross-entropy loss, gradient handling, AdamW, cosine learning rate scheduling with warup, and gradient clipping.
+ - Text generation with greedy decoding, temp sampling, top-k, top-p, repetition penalty, and beam search.
+ - A binary checkpoint saving and loading for the model and tokenizer.
+
+## Why Does This Project Exists?
+
+This project was built by myself, as a 16 year old AI Enthusiast and Robotics Engineering, it exists because it was built for educational implementation for myself, to better understand how transformer language models work internally using plain low level language such as Rust. The goal is to make the code practical enough to run small experiments without relying on large external deep learning frameworks. 
 
 ## Project Structure
 
-- `src/engine.rs` - Tensor utilities, layers, language engine, checkpoint IO
-- `src/text_codec.rs` - BPE token codec and LM dataset builder
-- `src/fit.rs` - Optimizer, loss/grad helpers, training loop
-- `src/infer.rs` - Sampling and beam-search decoding
-- `src/profiles.rs` - Model size profiles
-- `src/lib.rs` - Library exports + tests
-- `src/main.rs` - End-to-end demo: train, save, load, generate
+- `engine.rs` - it contains a tensor utilities, layers, model logic and also the checkpoint IO
+- `text_codec.rs` - this code contains the BPE Tokenizer and the dataset helpers
+- `fit.rs` - contains optimizer and the training logic
+- `infer.rs` - contains decoding and generation methods
+- `profiles.rs` - it contains model configuration presets
+- `lib.rs` - for exposing the library modules and testing purpose
+- `main.rs` - runs the end-to-end demo
 
-## Quick Start
+## How to run it?
 
-```bash
-cargo run
-```
+You can build and run the project in release oor debug mode with Cargo, the program trains  small tokenizer, builds a model, trains language mmodel head parameters, saves the artifacts, reloads them, and gemerates sample text.
 
-This will:
+https://github.com/whysixmift/transformer-from-scratch-rust/releases/tag/v.1.0.0
 
-1. Train a token codec on a small in-file corpus
-2. Build an engine from a profile config
-3. Train LM head parameters
-4. Save `engine.bin` and `text_codec.bin`
-5. Reload artifacts and generate text
+Prebuilt binaries are provided in the GitHub Releases page for Linux, Windows, and MacOS.
 
-## Tests
+## NOTE FOR USERS
 
-```bash
-cargo test
-```
-
-## Notes
-
-- This code is intentionally educational and CPU-friendly, not production-optimized.
-- Tensor operations are implemented manually for clarity.
+this project is educational (especially for myself) and CPU-friendlu. but it is NOT intended to be a production ready machine learning system. the implementation emphasizes readability and experimentation over speed and scale. and please, Star this repo if u like it! Thanks You!
