@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-upload:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: transformer_from_scratch
+            asset_name: transformer_from_scratch-linux-x86_64
+          - os: windows-latest
+            artifact_name: transformer_from_scratch.exe
+            asset_name: transformer_from_scratch-windows-x86_64.exe
+          - os: macos-latest
+            artifact_name: transformer_from_scratch
+            asset_name: transformer_from_scratch-macos-x86_64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Package binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "target/release/${{ matrix.artifact_name }}" "dist/${{ matrix.asset_name }}"
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.asset_name }}
